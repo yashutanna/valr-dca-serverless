@@ -1,0 +1,8 @@
+{
+  "name": "valr-dca-serverless",
+  "version": "1.0.0",
+  "dependencies": {
+    "@netlify/functions": "^1.6.0",
+    "crypto": "^1.0.1"
+  }
+}

@@ -42,4 +42,4 @@ API_KEY='your API key here' API_SECRET='your API secret here' DCA_CURRENCIES='ET
 Like this? Please show your gratitude by sending me a tip with VALR Pay.
 VALR Pay me here: https://www.valr.com/payments/send?payId=998JWU2ERC2M9ZP8G7HP
 
-Insipired by (nieldw)[https://app.netlify.com/start/deploy?repository=https://github.com/nieldw/valr-restaking-serverless]
+Insipired by [nieldw](https://app.netlify.com/start/deploy?repository=https://github.com/nieldw/valr-restaking-serverless)

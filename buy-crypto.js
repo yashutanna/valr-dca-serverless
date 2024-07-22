@@ -43,13 +43,14 @@ const getAllPairs = async () => {
     const allPairs = await response.json();
     return allPairs.reduce((acc, pair) => ({...acc, [pair.symbol]: pair}), {})
 }
-const getBestBid = async (pair) => {
+
+const getBestAsk = async (pair) => {
     let options = {
         method: "GET",
     };
     const response = await fetch(`https://api.valr.com/v1/public/${pair}/marketsummary`, options);
     const marketSummary = await response.json();
-    return marketSummary.bidPrice;
+    return marketSummary.askPrice;
 }
 
 const buy = async () => {
@@ -79,14 +80,14 @@ const buy = async () => {
                 console.log(`dcaAmount(${dcaAmounts[index]}) too low. require minimum purchase of(${pairs[pair].minQuoteAmount})${fiatCurrency}`);
                 return;
             }
-            const bestBid = await getBestBid(pair)
-            const amountToBuy = Number(dcaAmounts[index]) / Number(bestBid);
+            const bestAsk = await getBestAsk(pair)
+            const amountToBuy = Number(dcaAmounts[index]) / Number(bestAsk);
             if(amountToBuy < pairs[pair].minBaseAmount){
                 // do nothing if there is not sufficient balance
                 console.log(`amountToBuy(${amountToBuy}) too low. require minimum base amount(${pairs[pair].minBaseAmount})`);
                 return;
             }
-            return placeBuyOrder(pair, amountToBuy, bestBid);
+            return placeBuyOrder(pair, amountToBuy, bestAsk);
         });
 
         const orderIds = await Promise.all(buyPromises);

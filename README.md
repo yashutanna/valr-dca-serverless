@@ -10,7 +10,11 @@ VALR offers a convenient way to auto-buy various coins. however, there are a few
 * Market buy charges a fee is paid for every time this service is used
 * Daily deposits from your bank can cause a noisy transaction history
 
-By bulk depositing ZAR and using the Limit Post Only Reprice order, you are able to earn maker rewards on your daily crypto purchases 
+By bulk depositing ZAR and using the Limit Post Only Reprice order, you are able to earn maker rewards on your daily crypto purchases
+
+## Caveats
+Since we are not immediately buying the coin on the market and are placing an order on the order book, its possible that the price moves and your order does not execute. 
+In this case your order will remain on the order book until the price matches or until you manually cancel the order
 
 # Deploy scheduled task on Netlify
 When deployed on Netlify, the script will execute every 25th hour.

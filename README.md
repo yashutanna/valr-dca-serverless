@@ -1,5 +1,5 @@
 # VALR DCA
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/nieldw/valr-restaking-serverless)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/yashutanna/valr-dca-serverless)
 
 A simple scheduled script for Dollar Cost Averaging (DCA) your crypto purchases  [VALR.com](https://www.valr.com/invite/VAGUBUNX).
 

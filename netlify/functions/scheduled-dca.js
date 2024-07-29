@@ -9,4 +9,4 @@ const handler = async function(event, context) {
     };
 };
 
-exports.handler = schedule("*/25 * * * *", handler);
+exports.handler = schedule("@hourly", handler);

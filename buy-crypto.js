@@ -9,15 +9,29 @@ function isDcaHour(){
 
 function getCustomerOrderId(pair){
     const date = new Date().getDate();
-    const month = new Date().getMonth();
+    const month = new Date().getMonth() + 1;
     const year = new Date().getFullYear();
     const hour = new Date().getHours();
     return `${pair}-${year}-${month}-${date}-${hour}`
 }
 
 async function hasAlreadyPlacedOrder(customerOrderId){
-    const order = await getOrder(customerOrderId);
-    return order.code !== -1;
+    try {
+        const { orderStatusType } = await getOrder(customerOrderId);
+        switch (orderStatusType) {
+            case 'Failed':
+            case 'Cancelled':
+                return false;
+            case 'Filled':
+                return true;
+            default: {
+                console.warn(`unaccounted for orderTypeStatus(${orderStatusType}), assuming order has already been placed`)
+                return true;
+            }
+        }
+    } catch (e) {
+        return false;
+    }
 }
 
 async function getOrder(customerOrderId) {
@@ -30,6 +44,9 @@ async function getOrder(customerOrderId) {
     };
     const response = await fetch(`https://api.valr.com${path}`, options);
     const json = await response.json();
+    if(json.code < 0){
+        throw new Error("could not get order");
+    }
     return json
 }
 

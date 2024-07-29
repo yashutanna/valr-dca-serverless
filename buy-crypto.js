@@ -4,7 +4,8 @@ const dcaAmounts = process.env.DCA_AMOUNTS?.split(',').map(val => val.trim()) ||
 
 async function placeBuyOrder(pair, amount, price) {
     console.log(`Placing Limit Post Only Reprice order of ${amount} on pair ${pair}`);
-    let timestamp = (new Date()).getTime();
+    const date = new Date();
+    const timestamp = date.getTime();
     const body = {
         "side": "BUY",
         "quantity": amount,
@@ -13,7 +14,7 @@ async function placeBuyOrder(pair, amount, price) {
         "postOnly": false,
         "postOnlyReprice": true,
         "postOnlyRepriceTicks": "1",
-        "customerOrderId": "postOnlyReprice",
+        "customerOrderId": date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + "-" + pair,
         "timeInForce": "GTC"
     };
     const options = {

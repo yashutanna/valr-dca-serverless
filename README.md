@@ -31,8 +31,8 @@ Use the above "Deploy to Netlify" button to deploy on Netlify. Provide the API k
 
 If you want to deploy more than one instance of this script, perhaps targeting a different sub-account, you can do so in the Netlify App by clicking "Add new site" and picking "Import an existing project".
 Connect to your git provider and pick your fork of this repo, created when you deployed the first instance.
-Next, click "Advanced" and then add 4 variables, `API_KEY`, `API_SECRET`, `DCA_CURRENCIES` and `DCA_AMOUNTS`, with your API key and secret, the currencies you wish to DCA into and the amounts in ZAR for each currency.
-`DCA_CURRENCIES` and `DCA_AMOUNTS` expect a comma separated list of the same length. the index of the element associates the currency with the amount to buy in ZAR terms
+Next, click "Advanced" and then add 5 variables, `API_KEY`, `API_SECRET`, `DCA_EXECUTION_HOUR`, `DCA_CURRENCIES` and `DCA_AMOUNTS`, with your API key and secret, the currencies you wish to DCA into and the amounts in ZAR for each currency.
+`DCA_CURRENCIES` and `DCA_AMOUNTS` expect a comma separated list of the same length. the index of the element associates the currency with the amount to buy in ZAR terms. `DCA_EXECUTION_HOUR` is the hour in is based on the region your netlify deployment ends up in (so adjust accordingly)
 Click "Deploy site". That's it!
 
 ## Run with NodeJS

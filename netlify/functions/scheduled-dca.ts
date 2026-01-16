@@ -11,4 +11,7 @@ const handler: Handler = async function (_event, _context) {
   };
 };
 
+// Run every hour to check if it's time to execute DCA
+// The customerOrderId ensures DCA only executes once per day
+// even if the function runs multiple times at the configured hour
 export default schedule('@hourly', handler);

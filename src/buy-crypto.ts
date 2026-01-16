@@ -30,7 +30,11 @@ const client = new ValrClient({
 });
 
 function isDcaHour(): boolean {
-  return new Date().getHours() === config.DCA_EXECUTION_HOUR;
+  // Read fresh from environment on each check to allow dynamic changes without redeployment
+  const dcaHour = Number(process.env.DCA_EXECUTION_HOUR) || 15;
+  const currentHour = new Date().getHours();
+  console.log(`Checking DCA hour: current=${currentHour}, configured=${dcaHour}`);
+  return currentHour === dcaHour;
 }
 
 function getCustomerOrderId(pair: string): string {
@@ -38,8 +42,9 @@ function getCustomerOrderId(pair: string): string {
   const date = now.getDate();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
-  const hour = now.getHours();
-  return `${pair}-${year}-${month}-${date}-${hour}`;
+  // Removed hour to ensure only ONE order per day (not per hour)
+  // This prevents duplicate DCA executions even if function runs multiple times per day
+  return `${pair}-${year}-${month}-${date}`;
 }
 
 async function hasAlreadyPlacedOrder(customerOrderId: string): Promise<boolean> {
@@ -100,11 +105,7 @@ export async function buy(): Promise<void> {
     }
 
     if (!isDcaHour()) {
-      console.log(
-        `not running DCA as current hour(${new Date().getHours()}) is not DCA_EXECUTION_HOUR(${
-          config.DCA_EXECUTION_HOUR
-        })`
-      );
+      console.log('Not executing DCA - current hour does not match DCA_EXECUTION_HOUR');
       return;
     }
 

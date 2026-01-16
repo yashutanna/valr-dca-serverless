@@ -110,7 +110,7 @@ describe('buy-crypto', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       await module.buy();
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('not running DCA'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Not executing DCA'));
 
       consoleSpy.mockRestore();
     });

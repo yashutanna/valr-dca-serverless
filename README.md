@@ -1,32 +1,40 @@
 # VALR DCA
+
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/yashutanna/valr-dca-serverless)
 
-A simple scheduled script for Dollar Cost Averaging (DCA) your crypto purchases  [VALR.com](https://www.valr.com/invite/VAGUBUNX).
+A simple scheduled script for Dollar Cost Averaging (DCA) your crypto purchases [VALR.com](https://www.valr.com/invite/VAGUBUNX).
 
 When run, this script will use the VALR.com [API](https://docs.valr.com/) to get the account balance for ZAR, check if you have a sufficient balance for your DCA purchase and execute a Limit Post Only Reprice Order on the exchange for the currencies you with to DCA into.
 
 ## Why?
-VALR offers a convenient way to auto-buy various coins. however, there are a few drawbacks: 
-* Market buy charges a fee is paid for every time this service is used
-* Daily deposits from your bank can cause a noisy transaction history
+
+VALR offers a convenient way to auto-buy various coins. however, there are a few drawbacks:
+
+- Market buy charges a fee is paid for every time this service is used
+- Daily deposits from your bank can cause a noisy transaction history
 
 By bulk depositing ZAR and using the Limit Post Only Reprice order, you are able to earn maker rewards on your daily crypto purchases
 
 ## Caveats
-Since we are not immediately buying the coin on the market and are placing an order on the order book, its possible that the price moves and your order does not execute. 
+
+Since we are not immediately buying the coin on the market and are placing an order on the order book, its possible that the price moves and your order does not execute.
 In this case your order will remain on the order book until the price matches or until you manually cancel the order
 
 # Deploy scheduled task on Netlify
+
 When deployed on Netlify, the script will execute every 25th hour.
 
 ## Recommended setup
+
 It is strongly recommended to use a dedicated [sub-account](https://support.valr.com/hc/en-us/articles/4409820263186) for easy accounting.
 
 ## VALR API key
+
 In your sub-account, create a new API key with "View" and "Trade" permissions. DO NOT grant withdrawal permissions.
 Note the API key and secret.
 
 ## Deploy on Netlify
+
 Use the above "Deploy to Netlify" button to deploy on Netlify. Provide the API key and secret in the API_KEY and API_SECRET environment variables, respectively.
 
 If you want to deploy more than one instance of this script, perhaps targeting a different sub-account, you can do so in the Netlify App by clicking "Add new site" and picking "Import an existing project".
@@ -36,6 +44,7 @@ Next, click "Advanced" and then add 5 variables, `API_KEY`, `API_SECRET`, `DCA_E
 Click "Deploy site". That's it!
 
 ## Run with NodeJS
+
 You can run this script directly, without using Netlify:
 
 ```bash
@@ -43,6 +52,7 @@ API_KEY='your API key here' API_SECRET='your API secret here' DCA_CURRENCIES='ET
 ```
 
 ## Tip the Developer 🫶
+
 Like this? Please show your gratitude by sending me a tip with VALR Pay.
 VALR Pay me here: https://www.valr.com/payments/send?payId=998JWU2ERC2M9ZP8G7HP
 

@@ -1,0 +1,5 @@
+node_modules
+dist
+.netlify
+coverage
+package-lock.json

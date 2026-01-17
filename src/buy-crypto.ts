@@ -10,6 +10,13 @@ function getEnvConfig(): EnvConfig {
     throw new Error('API_KEY and API_SECRET environment variables are required');
   }
 
+  // ValrClient requires exactly 64-character keys
+  if (apiKey.length !== 64 || apiSecret.length !== 64) {
+    throw new Error(
+      `Invalid VALR credentials: API_KEY must be 64 characters (got ${apiKey.length}), API_SECRET must be 64 characters (got ${apiSecret.length})`
+    );
+  }
+
   const dcaHourExecution = Number(process.env.DCA_EXECUTION_HOUR) || 15;
   const dcaCurrencies = process.env.DCA_CURRENCIES?.split(',').map((val) => val.trim()) || [];
   const dcaAmounts = process.env.DCA_AMOUNTS?.split(',').map((val) => Number(val.trim())) || [];

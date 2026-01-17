@@ -1,14 +1,16 @@
 import type { Handler } from '@netlify/functions';
+import { createHmac } from 'node:crypto';
 import { buy } from '../../src/buy-crypto.js';
 
 // Manual DCA trigger - call this via URL to execute DCA immediately
-// URL: https://your-site.netlify.app/.netlify/functions/manual-dca?secret=YOUR_SECRET
-// Add ?force=true to bypass the hour check and execute immediately
+// Uses time-based HMAC signature for security
+// Generate signature offline with: echo -n "TIMESTAMP" | openssl dgst -sha256 -hmac "YOUR_SECRET" | cut -d' ' -f2
+// URL: https://your-site.netlify.app/.netlify/functions/manual-dca?timestamp=TIMESTAMP&signature=SIGNATURE&force=true
 export const handler: Handler = async function (event, _context) {
   console.log('Manual DCA trigger attempted');
 
-  // Password protection - check secret parameter
-  const providedSecret = event.queryStringParameters?.secret;
+  const timestamp = event.queryStringParameters?.timestamp;
+  const signature = event.queryStringParameters?.signature;
   const configuredSecret = process.env.MANUAL_DCA_SECRET;
 
   if (!configuredSecret) {
@@ -22,13 +24,59 @@ export const handler: Handler = async function (event, _context) {
     };
   }
 
-  if (!providedSecret || providedSecret !== configuredSecret) {
-    console.warn('Manual DCA trigger failed - invalid or missing secret');
+  // Validate timestamp and signature are provided
+  if (!timestamp || !signature) {
+    console.warn('Manual DCA trigger failed - missing timestamp or signature');
     return {
       statusCode: 401,
       body: JSON.stringify({
         success: false,
-        error: 'Unauthorized. Invalid or missing secret parameter.',
+        error: 'Unauthorized. Missing timestamp or signature parameter.',
+      }),
+    };
+  }
+
+  // Validate timestamp is a valid number
+  const timestampNum = parseInt(timestamp, 10);
+  if (isNaN(timestampNum)) {
+    console.warn('Manual DCA trigger failed - invalid timestamp format');
+    return {
+      statusCode: 401,
+      body: JSON.stringify({
+        success: false,
+        error: 'Unauthorized. Invalid timestamp format.',
+      }),
+    };
+  }
+
+  // Check if timestamp is within 5 minutes (prevents replay attacks)
+  const now = Math.floor(Date.now() / 1000);
+  const timeDiff = Math.abs(now - timestampNum);
+  const maxAge = 5 * 60; // 5 minutes in seconds
+
+  if (timeDiff > maxAge) {
+    console.warn(`Manual DCA trigger failed - timestamp too old (${timeDiff}s ago)`);
+    return {
+      statusCode: 401,
+      body: JSON.stringify({
+        success: false,
+        error: 'Unauthorized. Request expired (timestamp must be within 5 minutes).',
+      }),
+    };
+  }
+
+  // Verify HMAC signature
+  const expectedSignature = createHmac('sha256', configuredSecret)
+    .update(timestamp)
+    .digest('hex');
+
+  if (signature !== expectedSignature) {
+    console.warn('Manual DCA trigger failed - invalid signature');
+    return {
+      statusCode: 401,
+      body: JSON.stringify({
+        success: false,
+        error: 'Unauthorized. Invalid signature.',
       }),
     };
   }

@@ -141,9 +141,13 @@ export async function buy(): Promise<void> {
     );
 
     // Calculate per-execution amount by dividing by number of execution hours
-    const numberOfExecutionHours = config.DCA_EXECUTION_HOURS.length;
+    // Read fresh from environment to allow dynamic changes without redeployment
+    const dcaExecutionHours = process.env.DCA_EXECUTION_HOURS
+      ? process.env.DCA_EXECUTION_HOURS.split(',').map((val) => Number(val.trim()))
+      : [15];
+    const numberOfExecutionHours = dcaExecutionHours.length;
     console.log(
-      `DCA configured for ${numberOfExecutionHours} execution hour(s): [${config.DCA_EXECUTION_HOURS.join(',')}]`
+      `DCA configured for ${numberOfExecutionHours} execution hour(s): [${dcaExecutionHours.join(',')}]`
     );
 
     const buyPromises = config.DCA_CURRENCIES.map(async (currencyToBuy, index) => {

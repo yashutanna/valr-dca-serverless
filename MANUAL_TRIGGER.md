@@ -64,11 +64,11 @@ The script will output a complete URL you can paste into your browser or use wit
 
 ## 🎯 URL Parameters
 
-| Parameter   | Required    | Description                                                          |
-| ----------- | ----------- | -------------------------------------------------------------------- |
-| `timestamp` | ✅ Yes      | Unix timestamp in seconds (from `date +%s`)                          |
-| `signature` | ✅ Yes      | HMAC-SHA256 of timestamp using your secret                           |
-| `force`     | ❌ Optional | Set to `true` to execute immediately, bypassing `DCA_EXECUTION_HOUR` |
+| Parameter   | Required    | Description                                                           |
+| ----------- | ----------- | --------------------------------------------------------------------- |
+| `timestamp` | ✅ Yes      | Unix timestamp in seconds (from `date +%s`)                           |
+| `signature` | ✅ Yes      | HMAC-SHA256 of timestamp using your secret                            |
+| `force`     | ❌ Optional | Set to `true` to execute immediately, bypassing `DCA_EXECUTION_HOURS` |
 
 ## ✅ Examples
 

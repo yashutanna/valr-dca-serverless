@@ -5,6 +5,7 @@ import { buy } from '../../src/buy-crypto.js';
 // Uses time-based HMAC signature for security
 // Generate signature offline with: echo -n "TIMESTAMP" | openssl dgst -sha256 -hmac "YOUR_SECRET" | cut -d' ' -f2
 // URL: https://your-site.netlify.app/.netlify/functions/manual-dca?timestamp=TIMESTAMP&signature=SIGNATURE&force=true
+// force=true bypasses DCA_EXECUTION_HOURS check, force=false respects the configured hours
 
 export default async (req: Request): Promise<Response> => {
   console.log('Manual DCA trigger attempted');
@@ -100,17 +101,17 @@ export default async (req: Request): Promise<Response> => {
   console.log('Manual DCA authenticated successfully');
 
   if (forceExecute) {
-    // Temporarily override the hour check by setting env var
-    const originalHour = process.env.DCA_EXECUTION_HOUR;
-    process.env.DCA_EXECUTION_HOUR = new Date().getHours().toString();
+    // Temporarily override the hour check by setting env var to current hour
+    const originalHours = process.env.DCA_EXECUTION_HOURS;
+    process.env.DCA_EXECUTION_HOURS = new Date().getHours().toString();
 
     console.log('Force flag enabled - bypassing hour check');
 
     try {
       await buy();
 
-      // Restore original hour
-      process.env.DCA_EXECUTION_HOUR = originalHour;
+      // Restore original hours
+      process.env.DCA_EXECUTION_HOURS = originalHours;
 
       return new Response(
         JSON.stringify({
@@ -123,8 +124,8 @@ export default async (req: Request): Promise<Response> => {
         }
       );
     } catch (error) {
-      // Restore original hour even on error
-      process.env.DCA_EXECUTION_HOUR = originalHour;
+      // Restore original hours even on error
+      process.env.DCA_EXECUTION_HOURS = originalHours;
 
       return new Response(
         JSON.stringify({
@@ -138,7 +139,7 @@ export default async (req: Request): Promise<Response> => {
       );
     }
   } else {
-    // Normal execution - respects DCA_EXECUTION_HOUR
+    // Normal execution - respects DCA_EXECUTION_HOURS
     try {
       await buy();
 

@@ -34,13 +34,13 @@ describe('buy-crypto', () => {
       }).rejects.toThrow('API_KEY and API_SECRET environment variables are required');
     });
 
-    it('should use default DCA_EXECUTION_HOUR when not set', async () => {
+    it('should use default DCA_EXECUTION_HOURS when not set', async () => {
       // ValrClient requires 64-character keys
       process.env.API_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       process.env.API_SECRET = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
-      delete process.env.DCA_EXECUTION_HOUR;
+      delete process.env.DCA_EXECUTION_HOURS;
 
-      // Should not throw - default value of 15 should be used
+      // Should not throw - default value of [15] should be used
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const module = await import('./buy-crypto.js?t=' + Date.now());
       expect(module).toBeDefined();
@@ -76,7 +76,7 @@ describe('buy-crypto', () => {
       // ValrClient requires 64-character keys
       process.env.API_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       process.env.API_SECRET = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
-      process.env.DCA_EXECUTION_HOUR = '15';
+      process.env.DCA_EXECUTION_HOURS = '15';
       process.env.DCA_CURRENCIES = 'BTC,ETH';
       process.env.DCA_AMOUNTS = '100,50';
     });
@@ -98,10 +98,10 @@ describe('buy-crypto', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should exit early when not DCA hour', async () => {
+    it('should exit early when current hour not in DCA hours', async () => {
       const currentHour = new Date().getHours();
       const notDcaHour = currentHour === 15 ? 14 : 15;
-      process.env.DCA_EXECUTION_HOUR = notDcaHour.toString();
+      process.env.DCA_EXECUTION_HOURS = notDcaHour.toString();
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -117,14 +117,14 @@ describe('buy-crypto', () => {
   });
 
   describe('Customer Order ID generation', () => {
-    it('should generate consistent format', () => {
-      // Test that the format is pair-year-month-date-hour
+    it('should generate consistent format without hour component', () => {
+      // Test that the format is pair-year-month-date (no hour to ensure once-per-day execution)
       const pair = 'BTCZAR';
-      const expectedPattern = new RegExp(`${pair}-\\d{4}-\\d{1,2}-\\d{1,2}-\\d{1,2}`);
+      const expectedPattern = new RegExp(`${pair}-\\d{4}-\\d{1,2}-\\d{1,2}$`);
 
       // We can't directly test the internal function, but we can verify
       // the format through the integration test
-      expect(expectedPattern.test(`${pair}-2026-1-16-15`)).toBe(true);
+      expect(expectedPattern.test(`${pair}-2026-1-16`)).toBe(true);
     });
   });
 });

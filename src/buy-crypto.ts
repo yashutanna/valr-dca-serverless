@@ -17,14 +17,18 @@ function getEnvConfig(): EnvConfig {
     );
   }
 
-  const dcaHourExecution = Number(process.env.DCA_EXECUTION_HOUR) || 15;
+  // Parse DCA_EXECUTION_HOURS as comma-separated list, default to [15] if not set
+  const dcaExecutionHours = process.env.DCA_EXECUTION_HOURS
+    ? process.env.DCA_EXECUTION_HOURS.split(',').map((val) => Number(val.trim()))
+    : [15];
+
   const dcaCurrencies = process.env.DCA_CURRENCIES?.split(',').map((val) => val.trim()) || [];
   const dcaAmounts = process.env.DCA_AMOUNTS?.split(',').map((val) => Number(val.trim())) || [];
 
   return {
     API_KEY: apiKey,
     API_SECRET: apiSecret,
-    DCA_EXECUTION_HOUR: dcaHourExecution,
+    DCA_EXECUTION_HOURS: dcaExecutionHours,
     DCA_CURRENCIES: dcaCurrencies,
     DCA_AMOUNTS: dcaAmounts,
   };
@@ -38,10 +42,15 @@ const client = new ValrClient({
 
 function isDcaHour(): boolean {
   // Read fresh from environment on each check to allow dynamic changes without redeployment
-  const dcaHour = Number(process.env.DCA_EXECUTION_HOUR) || 15;
+  const dcaHours = process.env.DCA_EXECUTION_HOURS
+    ? process.env.DCA_EXECUTION_HOURS.split(',').map((val) => Number(val.trim()))
+    : [15];
   const currentHour = new Date().getHours();
-  console.log(`Checking DCA hour: current=${currentHour}, configured=${dcaHour}`);
-  return currentHour === dcaHour;
+  const isMatch = dcaHours.includes(currentHour);
+  console.log(
+    `Checking DCA hour: current=${currentHour}, configured=[${dcaHours.join(',')}], match=${isMatch}`
+  );
+  return isMatch;
 }
 
 function getCustomerOrderId(pair: string): string {
@@ -112,7 +121,7 @@ export async function buy(): Promise<void> {
     }
 
     if (!isDcaHour()) {
-      console.log('Not executing DCA - current hour does not match DCA_EXECUTION_HOUR');
+      console.log('Not executing DCA - current hour not in DCA_EXECUTION_HOURS');
       return;
     }
 
@@ -131,6 +140,12 @@ export async function buy(): Promise<void> {
       {} as Record<string, (typeof allPairs)[0]>
     );
 
+    // Calculate per-execution amount by dividing by number of execution hours
+    const numberOfExecutionHours = config.DCA_EXECUTION_HOURS.length;
+    console.log(
+      `DCA configured for ${numberOfExecutionHours} execution hour(s): [${config.DCA_EXECUTION_HOURS.join(',')}]`
+    );
+
     const buyPromises = config.DCA_CURRENCIES.map(async (currencyToBuy, index) => {
       const pair = `${currencyToBuy}${fiatCurrency}`.toUpperCase();
       const pairInfo = pairs[pair];
@@ -140,11 +155,17 @@ export async function buy(): Promise<void> {
         return;
       }
 
-      const dcaAmount = config.DCA_AMOUNTS[index];
-      if (dcaAmount === undefined) {
+      const totalDcaAmount = config.DCA_AMOUNTS[index];
+      if (totalDcaAmount === undefined) {
         console.error(`No DCA amount configured for index ${index}`);
         return;
       }
+
+      // Divide the total DCA amount by number of execution hours, rounded to nearest rand
+      const dcaAmount = Math.round(totalDcaAmount / numberOfExecutionHours);
+      console.log(
+        `${currencyToBuy}: Total DCA amount ${totalDcaAmount} ZAR / ${numberOfExecutionHours} execution(s) = ${dcaAmount} ZAR per execution`
+      );
 
       if (Number(zarBalance.available) < dcaAmount) {
         console.log(

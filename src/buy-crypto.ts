@@ -58,9 +58,10 @@ function getCustomerOrderId(pair: string): string {
   const date = now.getDate();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
+  const hour = now.getHours();
   // Removed hour to ensure only ONE order per day (not per hour)
   // This prevents duplicate DCA executions even if function runs multiple times per day
-  return `${pair}-${year}-${month}-${date}`;
+  return `${pair}-${year}-${month}-${date}-${hour}`;
 }
 
 async function hasAlreadyPlacedOrder(customerOrderId: string): Promise<boolean> {

@@ -101,9 +101,9 @@ export default async (req: Request): Promise<Response> => {
   console.log('Manual DCA authenticated successfully');
 
   if (forceExecute) {
-    // Temporarily override the hour check by setting env var to current hour
+    // Temporarily override the hour check by setting env var to current UTC hour
     const originalHours = process.env.DCA_EXECUTION_HOURS;
-    process.env.DCA_EXECUTION_HOURS = new Date().getHours().toString();
+    process.env.DCA_EXECUTION_HOURS = new Date().getUTCHours().toString();
 
     console.log('Force flag enabled - bypassing hour check');
 

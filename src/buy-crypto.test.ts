@@ -81,21 +81,15 @@ describe('buy-crypto', () => {
       process.env.DCA_AMOUNTS = '100,50';
     });
 
-    it('should exit early when currencies and amounts length dont match', async () => {
+    it('should throw error when currencies and amounts length dont match', async () => {
       process.env.DCA_CURRENCIES = 'BTC,ETH,SOL';
       process.env.DCA_AMOUNTS = '100,50';
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const module = await import('./buy-crypto.js?t=' + Date.now());
+
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      await module.buy();
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('currencies'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('amounts'));
-
-      consoleSpy.mockRestore();
+      await expect(module.buy()).rejects.toThrow('currencies');
     });
 
     it('should exit early when current hour not in DCA hours', async () => {
@@ -117,14 +111,15 @@ describe('buy-crypto', () => {
   });
 
   describe('Customer Order ID generation', () => {
-    it('should generate consistent format without hour component', () => {
-      // Test that the format is pair-year-month-date (no hour to ensure once-per-day execution)
+    it('should generate consistent format with hour component', () => {
+      // Test that the format is pair-year-month-date-hour to allow multiple executions per day
+      // Uses UTC hours to match Netlify's server timezone
       const pair = 'BTCZAR';
-      const expectedPattern = new RegExp(`${pair}-\\d{4}-\\d{1,2}-\\d{1,2}$`);
+      const expectedPattern = new RegExp(`${pair}-\\d{4}-\\d{1,2}-\\d{1,2}-\\d{1,2}$`);
 
       // We can't directly test the internal function, but we can verify
       // the format through the integration test
-      expect(expectedPattern.test(`${pair}-2026-1-16`)).toBe(true);
+      expect(expectedPattern.test(`${pair}-2026-1-16-15`)).toBe(true);
     });
   });
 });

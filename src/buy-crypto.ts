@@ -45,10 +45,11 @@ function isDcaHour(): boolean {
   const dcaHours = process.env.DCA_EXECUTION_HOURS
     ? process.env.DCA_EXECUTION_HOURS.split(',').map((val) => Number(val.trim()))
     : [15];
-  const currentHour = new Date().getHours();
+  // Use UTC hours to match Netlify's server timezone
+  const currentHour = new Date().getUTCHours();
   const isMatch = dcaHours.includes(currentHour);
   console.log(
-    `Checking DCA hour: current=${currentHour}, configured=[${dcaHours.join(',')}], match=${isMatch}`
+    `Checking DCA hour (UTC): current=${currentHour}, configured=[${dcaHours.join(',')}], match=${isMatch}`
   );
   return isMatch;
 }
@@ -58,9 +59,9 @@ function getCustomerOrderId(pair: string): string {
   const date = now.getDate();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
-  const hour = now.getHours();
-  // Removed hour to ensure only ONE order per day (not per hour)
-  // This prevents duplicate DCA executions even if function runs multiple times per day
+  const hour = now.getUTCHours();
+  // Includes hour to allow multiple DCA executions per day at different configured hours
+  // Uses UTC hours to match Netlify's server timezone
   return `${pair}-${year}-${month}-${date}-${hour}`;
 }
 
@@ -97,7 +98,7 @@ async function placeBuyOrder(
   price: string,
   customerOrderId: string
 ): Promise<string | undefined> {
-  console.log(`Placing Limit Post Only Reprice order of ${amount} on pair ${pair}`);
+  console.log(`Placing Limit Post Only order of ${amount} on pair ${pair}`);
 
   const response = await client.trading.placeLimitOrder({
     side: 'BUY',
@@ -105,6 +106,7 @@ async function placeBuyOrder(
     price: price,
     pair: pair,
     customerOrderId: customerOrderId,
+    postOnlyReprice: true,
     timeInForce: 'GTC',
   });
 
@@ -113,113 +115,131 @@ async function placeBuyOrder(
 }
 
 export async function buy(): Promise<void> {
-  try {
-    if (config.DCA_CURRENCIES.length !== config.DCA_AMOUNTS.length) {
-      console.error(
-        `currencies(${config.DCA_CURRENCIES.length}) and amounts(${config.DCA_AMOUNTS.length}) length dont match. Please check your DCA_CURRENCIES and DCA_AMOUNTS values`
-      );
-      return;
-    }
+  // Read currencies and amounts fresh from environment to handle warm starts
+  const dcaCurrencies = process.env.DCA_CURRENCIES?.split(',').map((val) => val.trim()) || [];
+  const dcaAmounts = process.env.DCA_AMOUNTS?.split(',').map((val) => Number(val.trim())) || [];
 
-    if (!isDcaHour()) {
-      console.log('Not executing DCA - current hour not in DCA_EXECUTION_HOURS');
-      return;
-    }
-
-    const fiatCurrency = 'ZAR';
-    const balances = await client.account.getBalances();
-    const zarBalance = balances.find((balance) => balance.currency === fiatCurrency);
-
-    if (!zarBalance) {
-      console.error(`No ${fiatCurrency} balance found`);
-      return;
-    }
-
-    const allPairs = await client.public.getCurrencyPairs();
-    const pairs = allPairs.reduce(
-      (acc, pair) => ({ ...acc, [pair.symbol]: pair }),
-      {} as Record<string, (typeof allPairs)[0]>
+  if (dcaCurrencies.length !== dcaAmounts.length) {
+    const error = new Error(
+      `currencies(${dcaCurrencies.length}) and amounts(${dcaAmounts.length}) length dont match. Please check your DCA_CURRENCIES and DCA_AMOUNTS values`
     );
-
-    // Calculate per-execution amount by dividing by number of execution hours
-    // Read fresh from environment to allow dynamic changes without redeployment
-    const dcaExecutionHours = process.env.DCA_EXECUTION_HOURS
-      ? process.env.DCA_EXECUTION_HOURS.split(',').map((val) => Number(val.trim()))
-      : [15];
-    const numberOfExecutionHours = dcaExecutionHours.length;
-    console.log(
-      `DCA configured for ${numberOfExecutionHours} execution hour(s): [${dcaExecutionHours.join(',')}]`
-    );
-
-    const buyPromises = config.DCA_CURRENCIES.map(async (currencyToBuy, index) => {
-      const pair = `${currencyToBuy}${fiatCurrency}`.toUpperCase();
-      const pairInfo = pairs[pair];
-
-      if (!pairInfo) {
-        console.log(`order book ${pair} does not exist`);
-        return;
-      }
-
-      const totalDcaAmount = config.DCA_AMOUNTS[index];
-      if (totalDcaAmount === undefined) {
-        console.error(`No DCA amount configured for index ${index}`);
-        return;
-      }
-
-      // Divide the total DCA amount by number of execution hours, rounded to nearest rand
-      const dcaAmount = Math.round(totalDcaAmount / numberOfExecutionHours);
-      console.log(
-        `${currencyToBuy}: Total DCA amount ${totalDcaAmount} ZAR / ${numberOfExecutionHours} execution(s) = ${dcaAmount} ZAR per execution`
-      );
-
-      if (Number(zarBalance.available) < dcaAmount) {
-        console.log(
-          `Insufficient balance(${zarBalance.available}) to buy amount(${dcaAmount}) of currency(${currencyToBuy})`
-        );
-        return;
-      }
-
-      if (dcaAmount < Number(pairInfo.minQuoteAmount)) {
-        console.log(
-          `dcaAmount(${dcaAmount}) too low. require minimum purchase of(${pairInfo.minQuoteAmount})${fiatCurrency}`
-        );
-        return;
-      }
-
-      const customerOrderId = getCustomerOrderId(pair);
-      if (await hasAlreadyPlacedOrder(customerOrderId)) {
-        console.log(`customerOrderId(${customerOrderId}) already exists`);
-        return;
-      }
-
-      const allMarketSummaries = await client.public.getMarketSummary();
-      const marketSummary = allMarketSummaries.find((ms) => ms.currencyPair === pair);
-
-      if (!marketSummary) {
-        console.log(`No market summary found for ${pair}`);
-        return;
-      }
-
-      console.log(JSON.stringify(marketSummary, null, 2));
-
-      const price = marketSummary.askPrice;
-      const amountToBuy = dcaAmount / Number(price);
-
-      if (amountToBuy < Number(pairInfo.minBaseAmount)) {
-        console.log(
-          `amountToBuy(${amountToBuy}) too low. require minimum base amount(${pairInfo.minBaseAmount})`
-        );
-        return;
-      }
-
-      return placeBuyOrder(pair, amountToBuy, price, customerOrderId);
-    });
-
-    const orderIds = await Promise.all(buyPromises);
-    console.log(JSON.stringify(orderIds, null, 2));
-  } catch (error) {
-    console.log(error);
+    console.error(error.message);
+    throw error;
   }
+
+  if (!isDcaHour()) {
+    console.log('Not executing DCA - current hour not in DCA_EXECUTION_HOURS');
+    return;
+  }
+
+  const fiatCurrency = 'ZAR';
+  const balances = await client.account.getBalances();
+  const zarBalance = balances.find((balance) => balance.currency === fiatCurrency);
+
+  if (!zarBalance) {
+    const error = new Error(`No ${fiatCurrency} balance found`);
+    console.error(error.message);
+    throw error;
+  }
+
+  const allPairs = await client.public.getCurrencyPairs();
+  const pairs = allPairs.reduce(
+    (acc, pair) => ({ ...acc, [pair.symbol]: pair }),
+    {} as Record<string, (typeof allPairs)[0]>
+  );
+
+  // Calculate per-execution amount by dividing by number of execution hours
+  // Read fresh from environment to allow dynamic changes without redeployment
+  const dcaExecutionHours = process.env.DCA_EXECUTION_HOURS
+    ? process.env.DCA_EXECUTION_HOURS.split(',').map((val) => Number(val.trim()))
+    : [15];
+  const numberOfExecutionHours = dcaExecutionHours.length;
+  console.log(
+    `DCA configured for ${numberOfExecutionHours} execution hour(s): [${dcaExecutionHours.join(',')}]`
+  );
+
+  // Track remaining balance to avoid race conditions when processing multiple currencies
+  let remainingBalance = Number(zarBalance.available);
+  const orderIds: (string | undefined)[] = [];
+
+  // Process orders sequentially to properly track balance
+  for (let index = 0; index < dcaCurrencies.length; index++) {
+    const currencyToBuy = dcaCurrencies[index];
+    const pair = `${currencyToBuy}${fiatCurrency}`.toUpperCase();
+    const pairInfo = pairs[pair];
+
+    if (!pairInfo) {
+      console.log(`order book ${pair} does not exist`);
+      orderIds.push(undefined);
+      continue;
+    }
+
+    const totalDcaAmount = dcaAmounts[index];
+    if (totalDcaAmount === undefined) {
+      console.error(`No DCA amount configured for index ${index}`);
+      orderIds.push(undefined);
+      continue;
+    }
+
+    // Divide the total DCA amount by number of execution hours, rounded to nearest rand
+    const dcaAmount = Math.round(totalDcaAmount / numberOfExecutionHours);
+    console.log(
+      `${currencyToBuy}: Total DCA amount ${totalDcaAmount} ZAR / ${numberOfExecutionHours} execution(s) = ${dcaAmount} ZAR per execution`
+    );
+
+    if (remainingBalance < dcaAmount) {
+      console.log(
+        `Insufficient balance(${remainingBalance}) to buy amount(${dcaAmount}) of currency(${currencyToBuy})`
+      );
+      orderIds.push(undefined);
+      continue;
+    }
+
+    if (dcaAmount < Number(pairInfo.minQuoteAmount)) {
+      console.log(
+        `dcaAmount(${dcaAmount}) too low. require minimum purchase of(${pairInfo.minQuoteAmount})${fiatCurrency}`
+      );
+      orderIds.push(undefined);
+      continue;
+    }
+
+    const customerOrderId = getCustomerOrderId(pair);
+    if (await hasAlreadyPlacedOrder(customerOrderId)) {
+      console.log(`customerOrderId(${customerOrderId}) already exists`);
+      orderIds.push(undefined);
+      continue;
+    }
+
+    const allMarketSummaries = await client.public.getMarketSummary();
+    const marketSummary = allMarketSummaries.find((ms) => ms.currencyPair === pair);
+
+    if (!marketSummary) {
+      console.log(`No market summary found for ${pair}`);
+      orderIds.push(undefined);
+      continue;
+    }
+
+    console.log(JSON.stringify(marketSummary, null, 2));
+
+    const price = marketSummary.askPrice;
+    const amountToBuy = dcaAmount / Number(price);
+
+    if (amountToBuy < Number(pairInfo.minBaseAmount)) {
+      console.log(
+        `amountToBuy(${amountToBuy}) too low. require minimum base amount(${pairInfo.minBaseAmount})`
+      );
+      orderIds.push(undefined);
+      continue;
+    }
+
+    const orderId = await placeBuyOrder(pair, amountToBuy, price, customerOrderId);
+    orderIds.push(orderId);
+
+    // Deduct the amount from remaining balance for next iteration
+    remainingBalance -= dcaAmount;
+  }
+
+  console.log(JSON.stringify(orderIds, null, 2));
 }
 
 // CLI entry point for direct execution
